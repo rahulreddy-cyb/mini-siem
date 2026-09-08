@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Mini SIEM — Alert Dashboard</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 0; background: #0f1620; color: #e5e9f0; }
+        header { background: #16202c; padding: 20px 30px; border-bottom: 2px solid #2a3b4d; }
+        header h1 { margin: 0; font-size: 22px; color: #4fd1c5; }
+        .container { padding: 20px 30px; }
+        .summary { display: flex; gap: 16px; margin-bottom: 24px; }
+        .card { background: #16202c; border: 1px solid #2a3b4d; border-radius: 8px;
+                padding: 16px 20px; flex: 1; text-align: center; }
+        .card .num { font-size: 28px; font-weight: bold; }
+        .card.total .num { color: #4fd1c5; }
+        .card.high .num { color: #ff6b6b; }
+        .card.medium .num { color: #f6c453; }
+        .card.low .num { color: #6bcB77; }
+        .filters { margin-bottom: 16px; display: flex; gap: 10px; align-items: center; }
+        .filters select, .filters input, .filters button {
+            padding: 6px 10px; border-radius: 4px; border: 1px solid #2a3b4d;
+            background: #0f1620; color: #e5e9f0;
+        }
+        table { width: 100%; border-collapse: collapse; background: #16202c; }
+        th, td { padding: 10px 14px; text-align: left; border-bottom: 1px solid #2a3b4d; font-size: 14px; }
+        th { color: #9fb3c8; text-transform: uppercase; font-size: 12px; letter-spacing: 0.05em; }
+        .sev { padding: 3px 10px; border-radius: 12px; font-size: 12px; font-weight: bold; }
+        .sev.High { background: #4a1f1f; color: #ff6b6b; }
+        .sev.Medium { background: #4a3d1f; color: #f6c453; }
+        .sev.Low { background: #1f4a2b; color: #6bcB77; }
+        .ingest-btn { background: #4fd1c5; color: #0f1620; border: none; padding: 8px 16px;
+                      border-radius: 6px; cursor: pointer; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>🛡️ Mini SIEM — Alert Dashboard</h1>
+    </header>
+    <div class="container">
+        <div class="summary">
+            <div class="card total"><div class="num">{{ counts.total }}</div>Total Alerts</div>
+            <div class="card high"><div class="num">{{ counts.high }}</div>High</div>
+            <div class="card medium"><div class="num">{{ counts.medium }}</div>Medium</div>
+            <div class="card low"><div class="num">{{ counts.low }}</div>Low</div>
+        </div>
+
+        <form class="filters" method="get">
+            <select name="severity">
+                <option value="">All Severities</option>
+                <option value="High" {% if filters.severity == 'High' %}selected{% endif %}>High</option>
+                <option value="Medium" {% if filters.severity == 'Medium' %}selected{% endif %}>Medium</option>
+                <option value="Low" {% if filters.severity == 'Low' %}selected{% endif %}>Low</option>
+            </select>
+            <input type="text" name="source_ip" placeholder="Filter by source IP" value="{{ filters.source_ip }}">
+            <input type="date" name="date" value="{{ filters.date }}">
+            <button type="submit">Apply Filters</button>
+        </form>
+
+        <button class="ingest-btn" onclick="ingestLogs()">Re-scan Sample Logs</button>
+        <br><br>
+
+        <table>
+            <tr>
+                <th>Timestamp</th>
+                <th>Type</th>
+                <th>Severity</th>
+                <th>Source IP</th>
+                <th>User</th>
+                <th>Description</th>
+            </tr>
+            {% for alert in alerts %}
+            <tr>
+                <td>{{ alert.timestamp }}</td>
+                <td>{{ alert.alert_type }}</td>
+                <td><span class="sev {{ alert.severity }}">{{ alert.severity }}</span></td>
+                <td>{{ alert.source_ip }}</td>
+                <td>{{ alert.user }}</td>
+                <td>{{ alert.description }}</td>
+            </tr>
+            {% else %}
+            <tr><td colspan="6" style="text-align:center; color:#7789 99;">No alerts yet. Click "Re-scan Sample Logs" to run detection.</td></tr>
+            {% endfor %}
+        </table>
+    </div>
+
+    <script>
+        function ingestLogs() {
+            fetch('/ingest', { method: 'POST' })
+                .then(r => r.json())
+                .then(data => {
+                    alert(`Parsed ${data.events_parsed} events, saved ${data.alerts_saved} new alerts.`);
+                    location.reload();
+                });
+        }
+    </script>
+</body>
+</html>
