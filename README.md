@@ -79,4 +79,4 @@ By completing this project, you'll be able to speak to:
 
 ## 📌 Project Status
 
-🚧 Planned / In Development — this is a capstone blueprint. Build incrementally following the milestones above, and commit progress regularly to GitHub so your commit history shows real, iterative work (this matters to recruiters reviewing your repo).
+✅ Core Features Complete — log parsing, all three detection rules (brute-force, unusual-hour, unknown-user), SQLite alert storage, and the Flask dashboard (with filtering) are implemented and covered by a passing pytest suite (6/6 tests). Future improvements (email alerts, a scan scheduler, more detection rules) can be added incrementally on top of this working base.
