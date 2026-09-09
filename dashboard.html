@@ -2,95 +2,583 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Mini SIEM — Alert Dashboard</title>
+
     <style>
-        body { font-family: Arial, sans-serif; margin: 0; background: #0f1620; color: #e5e9f0; }
-        header { background: #16202c; padding: 20px 30px; border-bottom: 2px solid #2a3b4d; }
-        header h1 { margin: 0; font-size: 22px; color: #4fd1c5; }
-        .container { padding: 20px 30px; }
-        .summary { display: flex; gap: 16px; margin-bottom: 24px; }
-        .card { background: #16202c; border: 1px solid #2a3b4d; border-radius: 8px;
-                padding: 16px 20px; flex: 1; text-align: center; }
-        .card .num { font-size: 28px; font-weight: bold; }
-        .card.total .num { color: #4fd1c5; }
-        .card.high .num { color: #ff6b6b; }
-        .card.medium .num { color: #f6c453; }
-        .card.low .num { color: #6bcB77; }
-        .filters { margin-bottom: 16px; display: flex; gap: 10px; align-items: center; }
-        .filters select, .filters input, .filters button {
-            padding: 6px 10px; border-radius: 4px; border: 1px solid #2a3b4d;
-            background: #0f1620; color: #e5e9f0;
+        * {
+            box-sizing: border-box;
         }
-        table { width: 100%; border-collapse: collapse; background: #16202c; }
-        th, td { padding: 10px 14px; text-align: left; border-bottom: 1px solid #2a3b4d; font-size: 14px; }
-        th { color: #9fb3c8; text-transform: uppercase; font-size: 12px; letter-spacing: 0.05em; }
-        .sev { padding: 3px 10px; border-radius: 12px; font-size: 12px; font-weight: bold; }
-        .sev.High { background: #4a1f1f; color: #ff6b6b; }
-        .sev.Medium { background: #4a3d1f; color: #f6c453; }
-        .sev.Low { background: #1f4a2b; color: #6bcB77; }
-        .ingest-btn { background: #4fd1c5; color: #0f1620; border: none; padding: 8px 16px;
-                      border-radius: 6px; cursor: pointer; font-weight: bold; }
+
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            background: #0f1620;
+            color: #e5e9f0;
+        }
+
+        header {
+            background: #16202c;
+            padding: 20px 30px;
+            border-bottom: 2px solid #2a3b4d;
+        }
+
+        header h1 {
+            margin: 0;
+            font-size: 22px;
+            color: #4fd1c5;
+        }
+
+        .container {
+            padding: 20px 30px;
+        }
+
+        .summary {
+            display: flex;
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .card {
+            background: #16202c;
+            border: 1px solid #2a3b4d;
+            border-radius: 8px;
+            padding: 16px 20px;
+            flex: 1;
+            text-align: center;
+        }
+
+        .card .num {
+            font-size: 28px;
+            font-weight: bold;
+        }
+
+        .card.total .num {
+            color: #4fd1c5;
+        }
+
+        .card.high .num {
+            color: #ff6b6b;
+        }
+
+        .card.medium .num {
+            color: #f6c453;
+        }
+
+        .card.low .num {
+            color: #6bcb77;
+        }
+
+        .filters {
+            margin-bottom: 16px;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .filters select,
+        .filters input,
+        .filters button {
+            padding: 6px 10px;
+            border-radius: 4px;
+            border: 1px solid #2a3b4d;
+            background: #0f1620;
+            color: #e5e9f0;
+        }
+
+        .filters button {
+            cursor: pointer;
+        }
+
+        .ingest-btn {
+            background: #4fd1c5;
+            color: #0f1620;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        .ingest-btn:disabled {
+            opacity: 0.6;
+            cursor: wait;
+        }
+
+        .table-wrapper {
+            overflow-x: auto;
+            border-radius: 8px;
+        }
+
+        table {
+            width: 100%;
+            min-width: 1250px;
+            border-collapse: collapse;
+            background: #16202c;
+        }
+
+        th,
+        td {
+            padding: 10px 14px;
+            text-align: left;
+            border-bottom: 1px solid #2a3b4d;
+            font-size: 14px;
+            vertical-align: top;
+        }
+
+        th {
+            color: #9fb3c8;
+            text-transform: uppercase;
+            font-size: 12px;
+            letter-spacing: 0.05em;
+        }
+
+        .sev {
+            padding: 3px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: bold;
+            display: inline-block;
+        }
+
+        .sev.High {
+            background: #4a1f1f;
+            color: #ff6b6b;
+        }
+
+        .sev.Medium {
+            background: #4a3d1f;
+            color: #f6c453;
+        }
+
+        .sev.Low {
+            background: #1f4a2b;
+            color: #6bcb77;
+        }
+
+        .status-select {
+            min-width: 145px;
+            padding: 6px 8px;
+            border-radius: 5px;
+            border: 1px solid #2a3b4d;
+            background: #0f1620;
+            color: #e5e9f0;
+            cursor: pointer;
+        }
+
+        .status-badge {
+            display: inline-block;
+            margin-top: 6px;
+            padding: 3px 8px;
+            border-radius: 10px;
+            font-size: 11px;
+            font-weight: bold;
+        }
+
+        .status-NEW {
+            background: #19354a;
+            color: #69b7ff;
+        }
+
+        .status-INVESTIGATING {
+            background: #4a3d1f;
+            color: #f6c453;
+        }
+
+        .status-RESOLVED {
+            background: #1f4a2b;
+            color: #6bcb77;
+        }
+
+        .status-FALSE_POSITIVE {
+            background: #3a3a3a;
+            color: #b7c0cc;
+        }
+
+        .note-box {
+            width: 220px;
+            min-height: 70px;
+            resize: vertical;
+            padding: 7px 9px;
+            border-radius: 5px;
+            border: 1px solid #2a3b4d;
+            background: #0f1620;
+            color: #e5e9f0;
+            font-family: Arial, sans-serif;
+            font-size: 13px;
+        }
+
+        .save-note-btn {
+            margin-top: 6px;
+            padding: 6px 10px;
+            border: 1px solid #2a3b4d;
+            border-radius: 5px;
+            background: #243447;
+            color: #e5e9f0;
+            cursor: pointer;
+        }
+
+        .save-note-btn:hover {
+            background: #2c4056;
+        }
+
+        .save-note-btn:disabled {
+            opacity: 0.6;
+            cursor: wait;
+        }
+
+        .message {
+            position: fixed;
+            right: 20px;
+            bottom: 20px;
+            padding: 12px 16px;
+            border-radius: 7px;
+            background: #16202c;
+            border: 1px solid #2a3b4d;
+            color: #e5e9f0;
+            display: none;
+            z-index: 1000;
+            max-width: 380px;
+        }
+
+        .message.success {
+            border-color: #4fd1c5;
+        }
+
+        .message.error {
+            border-color: #ff6b6b;
+            color: #ffb0b0;
+        }
+
+        .empty {
+            text-align: center;
+            color: #778999;
+        }
     </style>
 </head>
+
 <body>
     <header>
         <h1>🛡️ Mini SIEM — Alert Dashboard</h1>
     </header>
+
     <div class="container">
+
         <div class="summary">
-            <div class="card total"><div class="num">{{ counts.total }}</div>Total Alerts</div>
-            <div class="card high"><div class="num">{{ counts.high }}</div>High</div>
-            <div class="card medium"><div class="num">{{ counts.medium }}</div>Medium</div>
-            <div class="card low"><div class="num">{{ counts.low }}</div>Low</div>
+            <div class="card total">
+                <div class="num">{{ counts.total }}</div>
+                Total Alerts
+            </div>
+
+            <div class="card high">
+                <div class="num">{{ counts.high }}</div>
+                High
+            </div>
+
+            <div class="card medium">
+                <div class="num">{{ counts.medium }}</div>
+                Medium
+            </div>
+
+            <div class="card low">
+                <div class="num">{{ counts.low }}</div>
+                Low
+            </div>
         </div>
 
         <form class="filters" method="get">
             <select name="severity">
                 <option value="">All Severities</option>
-                <option value="High" {% if filters.severity == 'High' %}selected{% endif %}>High</option>
-                <option value="Medium" {% if filters.severity == 'Medium' %}selected{% endif %}>Medium</option>
-                <option value="Low" {% if filters.severity == 'Low' %}selected{% endif %}>Low</option>
+
+                <option value="High"
+                    {% if filters.severity == 'High' %}selected{% endif %}>
+                    High
+                </option>
+
+                <option value="Medium"
+                    {% if filters.severity == 'Medium' %}selected{% endif %}>
+                    Medium
+                </option>
+
+                <option value="Low"
+                    {% if filters.severity == 'Low' %}selected{% endif %}>
+                    Low
+                </option>
             </select>
-            <input type="text" name="source_ip" placeholder="Filter by source IP" value="{{ filters.source_ip }}">
-            <input type="date" name="date" value="{{ filters.date }}">
+
+            <input
+                type="text"
+                name="source_ip"
+                placeholder="Filter by source IP"
+                value="{{ filters.source_ip }}"
+            >
+
+            <input
+                type="date"
+                name="date"
+                value="{{ filters.date }}"
+            >
+
             <button type="submit">Apply Filters</button>
         </form>
 
-        <button class="ingest-btn" onclick="ingestLogs()">Re-scan Sample Logs</button>
+        <button
+            id="ingestButton"
+            class="ingest-btn"
+            onclick="ingestLogs()"
+        >
+            Re-scan Sample Logs
+        </button>
+
         <br><br>
 
-        <table>
-            <tr>
-                <th>Timestamp</th>
-                <th>Type</th>
-                <th>Severity</th>
-                <th>Source IP</th>
-                <th>User</th>
-                <th>Description</th>
-            </tr>
-            {% for alert in alerts %}
-            <tr>
-                <td>{{ alert.timestamp }}</td>
-                <td>{{ alert.alert_type }}</td>
-                <td><span class="sev {{ alert.severity }}">{{ alert.severity }}</span></td>
-                <td>{{ alert.source_ip }}</td>
-                <td>{{ alert.user }}</td>
-                <td>{{ alert.description }}</td>
-            </tr>
-            {% else %}
-            <tr><td colspan="6" style="text-align:center; color:#7789 99;">No alerts yet. Click "Re-scan Sample Logs" to run detection.</td></tr>
-            {% endfor %}
-        </table>
+        <div class="table-wrapper">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Timestamp</th>
+                        <th>Type</th>
+                        <th>Severity</th>
+                        <th>Source IP</th>
+                        <th>User</th>
+                        <th>Description</th>
+                        <th>Status</th>
+                        <th>Analyst Note</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    {% for alert in alerts %}
+                    <tr>
+
+                        <td>{{ alert.timestamp }}</td>
+
+                        <td>{{ alert.alert_type }}</td>
+
+                        <td>
+                            <span class="sev {{ alert.severity }}">
+                                {{ alert.severity }}
+                            </span>
+                        </td>
+
+                        <td>{{ alert.source_ip }}</td>
+
+                        <td>{{ alert.user }}</td>
+
+                        <td>{{ alert.description }}</td>
+
+                        <td>
+                            <select
+                                class="status-select"
+                                onchange="updateStatus({{ alert.id }}, this.value)"
+                            >
+                                <option value="NEW"
+                                    {% if alert.status == 'NEW' %}selected{% endif %}>
+                                    New
+                                </option>
+
+                                <option value="INVESTIGATING"
+                                    {% if alert.status == 'INVESTIGATING' %}selected{% endif %}>
+                                    Investigating
+                                </option>
+
+                                <option value="RESOLVED"
+                                    {% if alert.status == 'RESOLVED' %}selected{% endif %}>
+                                    Resolved
+                                </option>
+
+                                <option value="FALSE_POSITIVE"
+                                    {% if alert.status == 'FALSE_POSITIVE' %}selected{% endif %}>
+                                    False Positive
+                                </option>
+                            </select>
+
+                            <br>
+
+                            <span
+                                id="status-badge-{{ alert.id }}"
+                                class="status-badge status-{{ alert.status }}"
+                            >
+                                {{ alert.status | replace('_', ' ') }}
+                            </span>
+                        </td>
+
+                        <td>
+                            <textarea
+                                id="note-{{ alert.id }}"
+                                class="note-box"
+                                placeholder="Add investigation note..."
+                            >{{ alert.analyst_note }}</textarea>
+
+                            <br>
+
+                            <button
+                                class="save-note-btn"
+                                onclick="saveNote({{ alert.id }})"
+                            >
+                                Save Note
+                            </button>
+                        </td>
+
+                    </tr>
+
+                    {% else %}
+
+                    <tr>
+                        <td colspan="8" class="empty">
+                            No alerts yet. Click "Re-scan Sample Logs" to run detection.
+                        </td>
+                    </tr>
+
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
     </div>
 
+    <div id="message" class="message"></div>
+
     <script>
-        function ingestLogs() {
-            fetch('/ingest', { method: 'POST' })
-                .then(r => r.json())
-                .then(data => {
-                    alert(`Parsed ${data.events_parsed} events, saved ${data.alerts_saved} new alerts.`);
+        function showMessage(text, type = "success") {
+            const message = document.getElementById("message");
+
+            message.textContent = text;
+            message.className = `message ${type}`;
+            message.style.display = "block";
+
+            setTimeout(() => {
+                message.style.display = "none";
+            }, 3000);
+        }
+
+
+        async function updateStatus(alertId, status) {
+            try {
+                const response = await fetch(
+                    `/api/alerts/${alertId}/status`,
+                    {
+                        method: "PATCH",
+                        headers: {
+                            "Content-Type": "application/json"
+                        },
+                        body: JSON.stringify({
+                            status: status
+                        })
+                    }
+                );
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(
+                        data.message || "Failed to update alert status."
+                    );
+                }
+
+                const badge = document.getElementById(
+                    `status-badge-${alertId}`
+                );
+
+                badge.textContent = status.replace("_", " ");
+                badge.className = `status-badge status-${status}`;
+
+                showMessage(
+                    `Alert #${alertId} status updated to ${status.replace("_", " ")}.`
+                );
+
+            } catch (error) {
+                showMessage(error.message, "error");
+            }
+        }
+
+
+        async function saveNote(alertId) {
+            const textarea = document.getElementById(
+                `note-${alertId}`
+            );
+
+            const button = textarea.parentElement.querySelector(
+                ".save-note-btn"
+            );
+
+            const note = textarea.value.trim();
+
+            button.disabled = true;
+            button.textContent = "Saving...";
+
+            try {
+                const response = await fetch(
+                    `/api/alerts/${alertId}/note`,
+                    {
+                        method: "PATCH",
+                        headers: {
+                            "Content-Type": "application/json"
+                        },
+                        body: JSON.stringify({
+                            note: note
+                        })
+                    }
+                );
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(
+                        data.message || "Failed to save analyst note."
+                    );
+                }
+
+                showMessage(
+                    `Analyst note saved for alert #${alertId}.`
+                );
+
+            } catch (error) {
+                showMessage(error.message, "error");
+
+            } finally {
+                button.disabled = false;
+                button.textContent = "Save Note";
+            }
+        }
+
+
+        async function ingestLogs() {
+            const button = document.getElementById("ingestButton");
+
+            button.disabled = true;
+            button.textContent = "Scanning...";
+
+            try {
+                const response = await fetch(
+                    "/ingest",
+                    {
+                        method: "POST"
+                    }
+                );
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(
+                        data.message || "Failed to ingest logs."
+                    );
+                }
+
+                showMessage(
+                    `Parsed ${data.events_parsed} events, saved ${data.alerts_saved} new alerts.`
+                );
+
+                setTimeout(() => {
                     location.reload();
-                });
+                }, 1000);
+
+            } catch (error) {
+                showMessage(error.message, "error");
+
+                button.disabled = false;
+                button.textContent = "Re-scan Sample Logs";
+            }
         }
     </script>
 </body>
