@@ -9,6 +9,8 @@
 2026-09-08 09:15:44 sshd[1070]: Failed password for root from 198.51.100.23 port 52000 ssh2
 2026-09-08 09:16:02 sshd[1070]: Accepted password for admin from 192.168.1.20 port 52050 ssh2
 2026-09-08 11:30:12 sshd[1080]: Accepted password for deploy from 192.168.1.30 port 52100 ssh2
+2026-09-08 11:35:10 sshd[1081]: Accepted password for reddy from 10.10.10.20 port 52150 ssh2
+2026-09-08 11:40:10 sshd[1082]: Accepted password for reddy from 10.10.10.30 port 52160 ssh2
 2026-09-08 14:05:33 sshd[1090]: Failed password for guest from 198.51.100.55 port 52200 ssh2
 2026-09-08 14:05:36 sshd[1090]: Failed password for guest from 198.51.100.55 port 52201 ssh2
 2026-09-08 22:50:10 sshd[1100]: Accepted password for reddy from 192.168.1.10 port 52300 ssh2

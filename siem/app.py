@@ -8,7 +8,7 @@ Then open http://127.0.0.1:5000 in your browser.
 
 import os
 
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, jsonify, render_template, request
 
 from siem.alert_manager import (
     alert_counts,
@@ -21,6 +21,7 @@ from siem.alert_manager import (
 from siem.detector import run_all_detectors
 from siem.log_parser import parse_log_file
 
+
 PROJECT_ROOT = os.path.dirname(os.path.dirname(__file__))
 
 app = Flask(
@@ -32,9 +33,10 @@ app = Flask(
 # In a real deployment this would come from config or an identity source.
 KNOWN_USERS = {"reddy", "admin", "deploy"}
 
+# Sample log is stored at the project root:
+# ~/kali/sample_auth.log
 SAMPLE_LOG_PATH = os.path.join(
     PROJECT_ROOT,
-    "sample_logs",
     "sample_auth.log",
 )
 
@@ -68,16 +70,18 @@ def dashboard():
 
 @app.route("/ingest", methods=["POST"])
 def ingest():
-    """Re-parse the sample log and store any detected alerts."""
+    """Parse the sample log, run detection rules, and store alerts."""
     events = parse_log_file(SAMPLE_LOG_PATH)
     alerts = run_all_detectors(events, KNOWN_USERS)
     inserted = save_alerts(alerts)
 
-    return {
-        "status": "ok",
-        "events_parsed": len(events),
-        "alerts_saved": inserted,
-    }
+    return jsonify(
+        {
+            "status": "ok",
+            "events_parsed": len(events),
+            "alerts_saved": inserted,
+        }
+    )
 
 
 @app.route("/api/alerts/<int:alert_id>/status", methods=["PATCH"])
@@ -105,8 +109,10 @@ def change_alert_status(alert_id: int):
         ), 400
 
     try:
-        updated = update_alert_status(alert_id, status)
-
+        updated = update_alert_status(
+            alert_id=alert_id,
+            status=status,
+        )
     except ValueError as exc:
         return jsonify(
             {
@@ -146,11 +152,9 @@ def change_analyst_note(alert_id: int):
             }
         ), 400
 
-    note = note.strip()
-
     updated = update_analyst_note(
-        alert_id,
-        note,
+        alert_id=alert_id,
+        note=note.strip(),
     )
 
     if not updated:
@@ -165,7 +169,7 @@ def change_analyst_note(alert_id: int):
         {
             "status": "ok",
             "alert_id": alert_id,
-            "analyst_note": note,
+            "analyst_note": note.strip(),
         }
     )
 
