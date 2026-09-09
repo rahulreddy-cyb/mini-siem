@@ -18,7 +18,10 @@ CREATE TABLE IF NOT EXISTS alerts (
     severity TEXT NOT NULL,
     source_ip TEXT NOT NULL,
     user TEXT NOT NULL,
-    description TEXT NOT NULL
+    description TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'NEW',
+    analyst_note TEXT NOT NULL DEFAULT '',
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 """
 
@@ -48,11 +51,28 @@ def save_alerts(alerts: List[Alert], db_path: str = DB_PATH) -> int:
     with get_connection(db_path) as conn:
         conn.executemany(
             """
-            INSERT INTO alerts (timestamp, alert_type, severity, source_ip, user, description)
-            VALUES (:timestamp, :alert_type, :severity, :source_ip, :user, :description)
+            INSERT INTO alerts (
+                timestamp,
+                alert_type,
+                severity,
+                source_ip,
+                user,
+                description
+            )
+            VALUES (
+                :timestamp,
+                :alert_type,
+                :severity,
+                :source_ip,
+                :user,
+                :description
+            )
             """,
             [
-                {**asdict(a), "timestamp": a.timestamp.strftime("%Y-%m-%d %H:%M:%S")}
+                {
+                    **asdict(a),
+                    "timestamp": a.timestamp.strftime("%Y-%m-%d %H:%M:%S"),
+                }
                 for a in alerts
             ],
         )
@@ -66,16 +86,19 @@ def fetch_alerts(
     source_ip: Optional[str] = None,
     date: Optional[str] = None,
 ) -> List[sqlite3.Row]:
-    """Fetch alerts, optionally filtered by severity, source_ip, or a date (YYYY-MM-DD)."""
+    """Fetch alerts, optionally filtered by severity, source_ip, or date (YYYY-MM-DD)."""
+
     query = "SELECT * FROM alerts WHERE 1=1"
     params: list = []
 
     if severity:
         query += " AND severity = ?"
         params.append(severity)
+
     if source_ip:
         query += " AND source_ip = ?"
         params.append(source_ip)
+
     if date:
         query += " AND timestamp LIKE ?"
         params.append(f"{date}%")
@@ -86,18 +109,90 @@ def fetch_alerts(
         return conn.execute(query, params).fetchall()
 
 
-def alert_counts(db_path: str = DB_PATH) -> dict:
-    """Return summary counts used by the dashboard header (total, by severity)."""
+def update_alert_status(
+    alert_id: int,
+    status: str,
+    db_path: str = DB_PATH,
+) -> bool:
+    """Update the lifecycle status of an alert."""
+
+    allowed_statuses = {
+        "NEW",
+        "INVESTIGATING",
+        "RESOLVED",
+        "FALSE_POSITIVE",
+    }
+
+    if status not in allowed_statuses:
+        raise ValueError(
+            f"Invalid status '{status}'. "
+            f"Allowed values: {', '.join(sorted(allowed_statuses))}"
+        )
+
+    updated_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
     with get_connection(db_path) as conn:
-        total = conn.execute("SELECT COUNT(*) AS c FROM alerts").fetchone()["c"]
+        cursor = conn.execute(
+            """
+            UPDATE alerts
+            SET status = ?,
+                updated_at = ?
+            WHERE id = ?
+            """,
+            (status, updated_at, alert_id),
+        )
+        conn.commit()
+
+        return cursor.rowcount > 0
+
+
+def update_analyst_note(
+    alert_id: int,
+    note: str,
+    db_path: str = DB_PATH,
+) -> bool:
+    """Save an analyst investigation note for an alert."""
+
+    updated_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    with get_connection(db_path) as conn:
+        cursor = conn.execute(
+            """
+            UPDATE alerts
+            SET analyst_note = ?,
+                updated_at = ?
+            WHERE id = ?
+            """,
+            (note, updated_at, alert_id),
+        )
+        conn.commit()
+
+        return cursor.rowcount > 0
+
+
+def alert_counts(db_path: str = DB_PATH) -> dict:
+    """Return summary counts used by the dashboard header."""
+
+    with get_connection(db_path) as conn:
+        total = conn.execute(
+            "SELECT COUNT(*) AS c FROM alerts"
+        ).fetchone()["c"]
+
         high = conn.execute(
             "SELECT COUNT(*) AS c FROM alerts WHERE severity = 'High'"
         ).fetchone()["c"]
+
         medium = conn.execute(
             "SELECT COUNT(*) AS c FROM alerts WHERE severity = 'Medium'"
         ).fetchone()["c"]
+
         low = conn.execute(
             "SELECT COUNT(*) AS c FROM alerts WHERE severity = 'Low'"
         ).fetchone()["c"]
 
-    return {"total": total, "high": high, "medium": medium, "low": low}
+    return {
+        "total": total,
+        "high": high,
+        "medium": medium,
+        "low": low,
+    }
